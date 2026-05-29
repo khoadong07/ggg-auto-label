@@ -1,0 +1,12 @@
+# Core
+pandas>=2.0.0
+openpyxl>=3.1.0
+
+# Streamlit
+streamlit>=1.32.0
+
+# Label prediction (AI Model)
+torch>=2.0.0
+transformers>=4.40.0
+underthesea>=6.8.0
+tqdm>=4.66.0
