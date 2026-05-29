@@ -201,9 +201,12 @@ def run_pipeline(
             df[col] = df["AuthorId"].apply(lambda x: LOOKUP.get(str(x), {}).get(field, ""))
     else:
         cb(87, "Bỏ qua demographic (không có file)...")
-        for col in ["Author", "Gender", "Birthday", "năm sinh", "TUỔI", "X",
+        for col in ["Gender", "Birthday", "năm sinh", "TUỔI", "X",
                     "HomeTown", "Phone", "Province", "Area"]:
-            df[col] = ""
+            if col not in df.columns:
+                df[col] = ""
+        if "Author" not in df.columns:
+            df["Author"] = ""
 
     # ── Step 4: Export ────────────────────────────────────────────────────────
     cb(94, "Xuất file kết quả...")
