@@ -192,19 +192,19 @@ def run_pipeline(
 
         # Derive năm sinh / TUỔI từ Birthday nếu chưa có
         if "năm sinh" not in demo.columns and "Birthday" in demo.columns:
-            demo["năm sinh"] = (
-                demo["Birthday"].astype(str)
-                    .apply(lambda v: m.group(1) if (m := _YEAR_PAT.search(v)) else "")
+            demo["năm sinh"] = demo["Birthday"].apply(
+                lambda v: (m.group(1) if (m := _YEAR_PAT.search(str(v))) else "")
+                          if pd.notna(v) else ""
             )
         if "TUỔI" not in demo.columns and "năm sinh" in demo.columns:
             demo["TUỔI"] = demo["năm sinh"].apply(
-                lambda y: str(CURRENT_YEAR - int(y)) if str(y).isdigit() else ""
+                lambda y: str(CURRENT_YEAR - int(y)) if pd.notna(y) and str(y).isdigit() else ""
             )
 
         # Derive Province / Area từ Location nếu chưa có
         if ("Province" not in demo.columns or "Area" not in demo.columns) and "Location" in demo.columns:
-            _loc_split = demo["Location"].astype(str).apply(
-                lambda v: [p.strip() for p in v.split(",")] if pd.notna(v) and v != "nan" else []
+            _loc_split = demo["Location"].apply(
+                lambda v: [p.strip() for p in str(v).split(",")] if pd.notna(v) else []
             )
             if "Province" not in demo.columns:
                 demo["Province"] = _loc_split.apply(lambda p: p[0] if p else "")
