@@ -76,14 +76,37 @@ ggg/
 ### Cài đặt dependencies
 
 ```bash
+# Cài đặt PyTorch CPU-only (nhẹ hơn)
+pip install torch==2.0.0+cpu torchvision==0.15.0+cpu --index-url https://download.pytorch.org/whl/cpu
+
+# Cài đặt các dependencies khác
 pip install -r requirements.txt
-pip install streamlit
 ```
 
 ### Chạy ứng dụng
 
 ```bash
 streamlit run app.py
+```
+
+## ⚙️ Tối ưu cho Server CPU
+
+Ứng dụng đã được tối ưu để chạy trên server chỉ có CPU:
+
+- **PyTorch CPU-only**: Sử dụng phiên bản CPU của PyTorch (nhẹ hơn ~2GB so với GPU version)
+- **Multi-threading**: Tối ưu số lượng threads cho CPU (OMP_NUM_THREADS=4)
+- **Batch processing**: Xử lý dữ liệu theo batch để tối ưu memory
+- **Lazy loading**: Model chỉ được load khi cần thiết
+
+### Điều chỉnh số lượng CPU threads
+
+Chỉnh sửa trong `docker-compose.yml`:
+
+```yaml
+environment:
+  - OMP_NUM_THREADS=4  # Thay đổi số này tùy theo số CPU cores
+  - MKL_NUM_THREADS=4
+  - OPENBLAS_NUM_THREADS=4
 ```
 
 ## 📊 Tính năng
