@@ -13,11 +13,8 @@ RUN apt-get update && apt-get install -y \
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install PyTorch CPU-only version first (nhẹ hơn, phù hợp server CPU)
-RUN pip install --no-cache-dir \
-    torch==2.0.0+cpu \
-    torchvision==0.15.0+cpu \
-    --index-url https://download.pytorch.org/whl/cpu
+# Install PyTorch CPU-only version first
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 # Install remaining Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
