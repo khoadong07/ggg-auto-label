@@ -273,9 +273,10 @@ with col_action:
         use_container_width=True,
         type="primary",
     ):
-        jid = submit_job(buzz_file, demo_file)
-        st.session_state["last_jid"] = jid
-        st.rerun()
+        if buzz_file is not None:
+            jid = submit_job(buzz_file, demo_file)
+            st.session_state["last_jid"] = jid
+            st.rerun()
 
     if buzz_file is None:
         st.caption("⬆️ Upload file buzz data trước")
