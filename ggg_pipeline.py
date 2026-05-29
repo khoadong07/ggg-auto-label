@@ -129,7 +129,9 @@ def run_pipeline(
     df["PublishedDate"] = df["PublishedDate"].apply(_format_date)
     df["POE"]           = df["SharedMedia"].fillna("Earned") if "SharedMedia" in df.columns else "Earned"
     df["Channel"]       = df.apply(_fix_channel, axis=1)
-    df["AuthorId"]      = df["Id"].apply(_extract_author_id)
+    # Chỉ tạo AuthorId nếu raw file chưa có — tránh ghi đè User ID gốc
+    if "AuthorId" not in df.columns:
+        df["AuthorId"] = df["Id"].apply(_extract_author_id)
 
     # ── Step 2: Predict labels ────────────────────────────────────────────────
     cb(15, "Tải model AI...")
@@ -188,6 +190,27 @@ def run_pipeline(
         if "Gender_norm" in demo.columns:
             demo["Gender"] = demo["Gender_norm"]
 
+        # Derive năm sinh / TUỔI từ Birthday nếu chưa có
+        if "năm sinh" not in demo.columns and "Birthday" in demo.columns:
+            demo["năm sinh"] = (
+                demo["Birthday"].astype(str)
+                    .apply(lambda v: m.group(1) if (m := _YEAR_PAT.search(v)) else "")
+            )
+        if "TUỔI" not in demo.columns and "năm sinh" in demo.columns:
+            demo["TUỔI"] = demo["năm sinh"].apply(
+                lambda y: str(CURRENT_YEAR - int(y)) if str(y).isdigit() else ""
+            )
+
+        # Derive Province / Area từ Location nếu chưa có
+        if ("Province" not in demo.columns or "Area" not in demo.columns) and "Location" in demo.columns:
+            _loc_split = demo["Location"].astype(str).apply(
+                lambda v: [p.strip() for p in v.split(",")] if pd.notna(v) and v != "nan" else []
+            )
+            if "Province" not in demo.columns:
+                demo["Province"] = _loc_split.apply(lambda p: p[0] if p else "")
+            if "Area" not in demo.columns:
+                demo["Area"] = _loc_split.apply(lambda p: p[1] if len(p) > 1 else "")
+
         wanted_cols = ["Name", "Gender", "Birthday", "năm sinh", "TUỔI", "X",
                        "HomeTown", "Phone", "Province", "Area"]
         demo_cols = [c for c in wanted_cols if c in demo.columns]
@@ -197,9 +220,16 @@ def run_pipeline(
                 .to_dict(orient="index")
         )
 
+        orig_author = df["Author"].copy() if "Author" in df.columns else None
+
         for field in demo_cols:
             col = "Author" if field == "Name" else field
             df[col] = df["AuthorId"].apply(lambda x: LOOKUP.get(str(x), {}).get(field, ""))
+
+        # Nếu demo không match được, giữ lại Author gốc từ raw file
+        if orig_author is not None:
+            df["Author"] = df["Author"].where(df["Author"].ne(""), orig_author)
+
         # Đảm bảo các cột thiếu vẫn tồn tại trong output
         for field in wanted_cols:
             col = "Author" if field == "Name" else field
