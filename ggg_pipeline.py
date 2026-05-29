@@ -188,8 +188,9 @@ def run_pipeline(
         if "Gender_norm" in demo.columns:
             demo["Gender"] = demo["Gender_norm"]
 
-        demo_cols = ["Name", "Gender", "Birthday", "năm sinh", "TUỔI", "X",
-                     "HomeTown", "Phone", "Province", "Area"]
+        wanted_cols = ["Name", "Gender", "Birthday", "năm sinh", "TUỔI", "X",
+                       "HomeTown", "Phone", "Province", "Area"]
+        demo_cols = [c for c in wanted_cols if c in demo.columns]
         LOOKUP = (
             demo.set_index("UserId")[demo_cols]
                 .fillna("")
@@ -199,6 +200,11 @@ def run_pipeline(
         for field in demo_cols:
             col = "Author" if field == "Name" else field
             df[col] = df["AuthorId"].apply(lambda x: LOOKUP.get(str(x), {}).get(field, ""))
+        # Đảm bảo các cột thiếu vẫn tồn tại trong output
+        for field in wanted_cols:
+            col = "Author" if field == "Name" else field
+            if col not in df.columns:
+                df[col] = ""
     else:
         cb(87, "Bỏ qua demographic (không có file)...")
         for col in ["Gender", "Birthday", "năm sinh", "TUỔI", "X",
