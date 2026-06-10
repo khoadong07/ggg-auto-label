@@ -20,7 +20,7 @@ st.set_page_config(
     page_title="GGG Auto Mapping",
     page_icon="🍽️",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
@@ -119,7 +119,33 @@ div[data-testid="stFileUploaderDropzone"]:hover {
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Background job runner
+# Sidebar navigation
+# ═══════════════════════════════════════════════════════════════════════════════
+PAGES = {
+    "Category Split": {
+        "icon":     "🔀",
+        "subtitle": "Tách dữ liệu theo Category — Golden Gate Group",
+    },
+    "Format & Label Data": {
+        "icon":     "🍽️",
+        "subtitle": "Hệ thống tự động xử lý Social Listening — Golden Gate Group",
+    },
+}
+
+with st.sidebar:
+    st.markdown("## 🍽️ GGG Auto Mapping")
+    st.caption("Golden Gate Group · Social Listening")
+    st.markdown("---")
+    page = st.radio(
+        "Chức năng",
+        list(PAGES.keys()),
+        index=0,
+        label_visibility="collapsed",
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Background job runner (Format & Label Data)
 # ═══════════════════════════════════════════════════════════════════════════════
 def _run_job(job_id: str, buzz_path: str, demo_path: Optional[str], output_path: str):
     JOBS[job_id].update(status="running", progress=1, stage="Đang khởi tạo...")
@@ -204,239 +230,109 @@ def submit_job(buzz_file, demo_file: Optional[object] = None) -> str:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Header
 # ═══════════════════════════════════════════════════════════════════════════════
-st.markdown("""
+_page_info = PAGES[page]
+st.markdown(f"""
 <div class="k-header">
-    <div class="k-header-icon">🍽️</div>
+    <div class="k-header-icon">{_page_info['icon']}</div>
     <div>
-        <div class="k-header-title">GGG Auto Mapping</div>
-        <div class="k-header-sub">Hệ thống tự động xử lý Social Listening — Golden Gate Group</div>
+        <div class="k-header-title">{page}</div>
+        <div class="k-header-sub">{_page_info['subtitle']}</div>
     </div>
     <div class="k-header-badge">⚡ Powered by Kompa AI</div>
 </div>
 """, unsafe_allow_html=True)
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Upload section
-# ═══════════════════════════════════════════════════════════════════════════════
-col_buzz, col_demo, col_action = st.columns([3, 3, 2], gap="medium")
 
-with col_buzz:
-    st.markdown('<div class="k-section">📁 File Buzz Data <span style="color:#C83200">*</span></div>', unsafe_allow_html=True)
-    buzz_file = st.file_uploader(
-        label="buzz",
-        type=["xlsx"],
-        accept_multiple_files=False,
-        label_visibility="collapsed",
-        key="buzz_uploader",
-    )
-    if buzz_file:
-        st.markdown(
-            f'<div style="background:#FFF4F0;border:1px solid #FFCCB8;border-radius:8px;'
-            f'padding:8px 14px;font-size:13px;color:#C83200;font-weight:500;margin-top:6px;">'
-            f'✓ &nbsp;<b>{buzz_file.name}</b> &nbsp;·&nbsp; {buzz_file.size/1024:.1f} KB</div>',
-            unsafe_allow_html=True,
+# ═══════════════════════════════════════════════════════════════════════════════
+# Page: Category Split (placeholder)
+# ═══════════════════════════════════════════════════════════════════════════════
+def render_category_split():
+    col_file, col_action = st.columns([4, 2], gap="medium")
+
+    with col_file:
+        st.markdown('<div class="k-section">📁 File dữ liệu <span style="color:#C83200">*</span></div>', unsafe_allow_html=True)
+        cat_file = st.file_uploader(
+            label="category_input",
+            type=["xlsx"],
+            accept_multiple_files=False,
+            label_visibility="collapsed",
+            key="category_uploader",
         )
-    else:
-        st.caption("File raw buzz data (.xlsx) — bắt buộc")
-
-with col_demo:
-    st.markdown('<div class="k-section">👥 File Demographic <span style="color:#94A3B8">(tùy chọn)</span></div>', unsafe_allow_html=True)
-    demo_file = st.file_uploader(
-        label="demo",
-        type=["xlsx"],
-        accept_multiple_files=False,
-        label_visibility="collapsed",
-        key="demo_uploader",
-    )
-    if demo_file:
-        st.markdown(
-            f'<div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:8px;'
-            f'padding:8px 14px;font-size:13px;color:#16A34A;font-weight:500;margin-top:6px;">'
-            f'✓ &nbsp;<b>{demo_file.name}</b> &nbsp;·&nbsp; {demo_file.size/1024:.1f} KB</div>',
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(
-            '<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;'
-            'padding:8px 14px;font-size:13px;color:#92400E;margin-top:6px;">'
-            '⚠️ Không có demographic — vẫn xử lý, gán tag <b>No Demographic</b></div>',
-            unsafe_allow_html=True,
-        )
-
-with col_action:
-    st.markdown('<div class="k-section">🚀 Thực thi</div>', unsafe_allow_html=True)
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-
-    if st.button(
-        "🚀  Bắt đầu xử lý",
-        disabled=(buzz_file is None),
-        use_container_width=True,
-        type="primary",
-    ):
-        if buzz_file is not None:
-            jid = submit_job(buzz_file, demo_file)
-            st.session_state["last_jid"] = jid
-            st.rerun()
-
-    if buzz_file is None:
-        st.caption("⬆️ Upload file buzz data trước")
-    else:
-        mode = "với Demographic" if demo_file else "không có Demographic"
-        st.caption(f"Sẵn sàng chạy {mode}")
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Job list
-# ═══════════════════════════════════════════════════════════════════════════════
-st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-st.markdown('<div class="k-section">📊 Danh sách tác vụ</div>', unsafe_allow_html=True)
-
-STATUS_CFG = {
-    "running": ("⏳", "Đang chạy",  "#C83200", "k-job-running"),
-    "done":    ("✅", "Hoàn thành", "#16A34A", "k-job-done"),
-    "error":   ("❌", "Lỗi",        "#DC2626", "k-job-error"),
-    "stopped": ("⏹",  "Đã dừng",   "#F59E0B", "k-job-stopped"),
-    "queued":  ("🕐", "Chờ xử lý", "#94A3B8", "k-job-queued"),
-}
-PROG_COLOR = {
-    "running": "#C83200", "done": "#16A34A",
-    "error": "#DC2626", "stopped": "#F59E0B", "queued": "#CBD5E1",
-}
-
-if not JOBS:
-    st.markdown(
-        '<div class="k-empty">'
-        '<div class="k-empty-icon">📭</div>'
-        '<div class="k-empty-text">Chưa có tác vụ nào</div>'
-        '<div class="k-empty-hint">Upload file buzz và bấm <b>Bắt đầu xử lý</b></div>'
-        '</div>',
-        unsafe_allow_html=True,
-    )
-else:
-    has_running = False
-
-    for job_id, job in reversed(list(JOBS.items())):
-        status   = job["status"]
-        progress = job["progress"]
-        stage    = job["stage"]
-
-        s_icon, s_label, s_color, _ = STATUS_CFG.get(status, ("❓", status, "#94A3B8", ""))
-        prog_color = PROG_COLOR.get(status, "#CBD5E1")
-        fill_pct   = progress if status != "error" else 100
-
-        col_info, col_status, col_pct, col_action = st.columns([5, 1.5, 1, 1.8], gap="small")
-
-        with col_info:
-            demo_badge = (
-                '<span class="demo-yes">👥 Có Demographic</span>'
-                if job["has_demo"] else
-                '<span class="demo-no">🚫 No Demographic</span>'
-            )
-            stats_html = ""
-            if status == "done" and job.get("stats"):
-                s = job["stats"]
-                stats_html = (
-                    f'<span style="font-size:11px;color:#94A3B8;margin-left:8px;">'
-                    f'{s["total_rows"]:,} rows &nbsp;·&nbsp; '
-                    f'Labels: {s["labels_filled"]:,}'
-                    + (f' &nbsp;·&nbsp; Demo matched: {s["demo_matched"]:,}' if s["has_demo"] else "")
-                    + '</span>'
-                )
+        if cat_file:
             st.markdown(
-                f'<div style="display:flex;align-items:center;gap:8px;padding-top:8px;flex-wrap:wrap;">'
-                f'<span style="font-weight:600;font-size:14px;color:#1E293B;max-width:220px;'
-                f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{job["filename"]}">'
-                f'{job["filename"]}</span>'
-                f'{demo_badge}'
-                f'<span style="color:#CBD5E1;font-size:11px;">#{job_id}</span>'
-                f'{stats_html}'
-                f'</div>',
+                f'<div style="background:#FFF4F0;border:1px solid #FFCCB8;border-radius:8px;'
+                f'padding:8px 14px;font-size:13px;color:#C83200;font-weight:500;margin-top:6px;">'
+                f'✓ &nbsp;<b>{cat_file.name}</b> &nbsp;·&nbsp; {cat_file.size/1024:.1f} KB</div>',
                 unsafe_allow_html=True,
             )
+        else:
+            st.caption("File Excel (.xlsx) có cột Topic — bắt buộc")
 
-        with col_status:
-            st.markdown(
-                f'<div style="text-align:center;padding-top:8px;font-size:13px;'
-                f'font-weight:700;color:{s_color};">{s_icon}&nbsp;{s_label}</div>',
-                unsafe_allow_html=True,
-            )
+    with col_action:
+        st.markdown('<div class="k-section">🚀 Thực thi</div>', unsafe_allow_html=True)
+        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+        run_clicked = st.button(
+            "🔀  Tách Category",
+            disabled=(cat_file is None),
+            use_container_width=True,
+            type="primary",
+        )
+        if cat_file is None:
+            st.caption("⬆️ Upload file dữ liệu trước")
+        else:
+            st.caption("Sẵn sàng tách dữ liệu")
 
-        with col_pct:
-            st.markdown(
-                f'<div style="text-align:center;padding-top:4px;font-size:20px;'
-                f'font-weight:800;color:{s_color};">{progress}%</div>',
-                unsafe_allow_html=True,
-            )
+    # ── Xử lý khi bấm nút ─────────────────────────────────────────────────────
+    if run_clicked and cat_file is not None:
+        input_path = str(UPLOAD_DIR / f"catsplit_{uuid.uuid4().hex[:8]}_{cat_file.name}")
+        with open(input_path, "wb") as f:
+            f.write(cat_file.getbuffer())
 
-        with col_action:
-            if status == "done" and job.get("output_path") and os.path.exists(job["output_path"]):
-                with open(job["output_path"], "rb") as fout:
-                    st.download_button(
-                        label="⬇️ Tải về",
-                        data=fout.read(),
-                        file_name=f"GGG_output_{job['filename']}",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        key=f"dl_{job_id}",
-                        use_container_width=True,
-                    )
-            elif status in ("running", "queued"):
-                if st.button("⏹  Dừng", key=f"stop_{job_id}", use_container_width=True):
-                    JOBS[job_id]["stop_requested"] = True
-                    JOBS[job_id]["stage"] = "Đang dừng..."
-                    st.rerun()
+        output_path = str(OUTPUT_DIR / f"catsplit_{uuid.uuid4().hex[:8]}.zip")
 
-        # Progress bar
+        try:
+            from category_split_pipeline import split_by_category
+            with st.spinner("Đang tách dữ liệu theo Category..."):
+                stats = split_by_category(input_path, output_path)
+            st.session_state["category_split_result"] = {"output_path": output_path, "stats": stats}
+            st.session_state.pop("category_split_error", None)
+        except Exception:
+            import traceback
+            st.session_state["category_split_error"] = traceback.format_exc()
+            st.session_state.pop("category_split_result", None)
+
+    # ── Hiển thị lỗi (nếu có) ────────────────────────────────────────────────
+    error = st.session_state.get("category_split_error")
+    if error:
+        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+        st.error("Lỗi xử lý file")
+        with st.expander("Xem chi tiết lỗi", expanded=False):
+            st.code(error, language=None)
+
+    # ── Hiển thị kết quả ─────────────────────────────────────────────────────
+    result = st.session_state.get("category_split_result")
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+
+    if not result:
         st.markdown(
-            f'<div class="k-prog-wrap">'
-            f'<div class="k-prog-bar" style="width:{fill_pct}%;background:{prog_color};"></div>'
-            f'</div>',
+            '<div class="k-empty">'
+            '<div class="k-empty-icon">📭</div>'
+            '<div class="k-empty-text">Chưa có kết quả tách Category</div>'
+            '<div class="k-empty-hint">Upload file Excel có cột <b>Topic</b> và bấm <b>Tách Category</b></div>'
+            '</div>',
             unsafe_allow_html=True,
         )
+        return
 
-        # Stage + timestamp
-        t_info = f"Tạo lúc {job['created_at']}"
-        if job.get("finished_at"):
-            t_info += f"  ·  Xong lúc {job['finished_at']}"
-        st.markdown(
-            f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
-            f'<span style="font-size:12px;color:#64748B;">{stage}</span>'
-            f'<span style="font-size:11px;color:#CBD5E1;">{t_info}</span>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
+    stats = result["stats"]
+    st.markdown('<div class="k-section">📦 Kết quả</div>', unsafe_allow_html=True)
 
-        if status == "error" and job.get("error"):
-            with st.expander("Xem chi tiết lỗi", expanded=False):
-                st.code(job["error"], language=None)
-
-        st.markdown('<div style="height:1px;background:#F1F5F9;margin:6px 0 10px;"></div>', unsafe_allow_html=True)
-
-        if status == "running":
-            has_running = True
-
-    if has_running:
-        time.sleep(1)
-        st.rerun()
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Stats + Clear
-# ═══════════════════════════════════════════════════════════════════════════════
-if JOBS:
-    total_n   = len(JOBS)
-    run_n     = sum(1 for j in JOBS.values() if j["status"] == "running")
-    done_n    = sum(1 for j in JOBS.values() if j["status"] == "done")
-    stopped_n = sum(1 for j in JOBS.values() if j["status"] == "stopped")
-    err_n     = sum(1 for j in JOBS.values() if j["status"] == "error")
-    demo_n    = sum(1 for j in JOBS.values() if j["has_demo"])
-
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
+    c1, c2, c3, c4 = st.columns(4)
     for col, num, label, color in [
-        (c1, total_n,   "Tổng cộng",     "#C83200"),
-        (c2, run_n,     "Đang chạy",     "#C83200"),
-        (c3, done_n,    "Hoàn thành",    "#16A34A"),
-        (c4, stopped_n, "Đã dừng",       "#F59E0B"),
-        (c5, err_n,     "Lỗi",           "#DC2626"),
-        (c6, demo_n,    "Có Demographic","#0EA5E9"),
+        (c1, stats["total_rows"],       "Tổng số dòng",          "#C83200"),
+        (c2, stats["mapped_rows"],      "Đã map Category",       "#16A34A"),
+        (c3, stats["unmapped_rows"],    "Topic không xác định",  "#F59E0B"),
+        (c4, stats["categories_count"], "File CSV đã tạo",       "#0EA5E9"),
     ]:
         with col:
             st.markdown(
@@ -448,12 +344,278 @@ if JOBS:
             )
 
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
-    clearable = [jid for jid, j in JOBS.items() if j["status"] in ("done", "error", "stopped")]
-    if clearable:
-        if st.button(f"🗑️  Xoá {len(clearable)} tác vụ đã kết thúc", type="secondary"):
-            for jid in clearable:
-                del JOBS[jid]
+    period_note = (
+        "theo dữ liệu PublishedDate" if stats["date_source"] == "data"
+        else "ngày hiện tại — không tìm thấy PublishedDate hợp lệ"
+    )
+    st.caption(f"🗓️ Kỳ báo cáo: **{stats['month_year_dot']}** ({period_note})")
+
+    if stats["unmapped_topics"]:
+        with st.expander(f"⚠️ {stats['unmapped_rows']} dòng có Topic không nằm trong bảng mapping (đã bỏ qua)", expanded=False):
+            st.write(", ".join(stats["unmapped_topics"]))
+
+    with st.expander(f"📄 Danh sách {stats['categories_count']} file CSV đã tạo", expanded=False):
+        for f in stats["files"]:
+            st.markdown(f"- `{f['name']}` — {f['rows']:,} dòng")
+
+    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+    zip_name = f"ggg-monthly-{stats['month_year_compact']}.zip"
+    with open(result["output_path"], "rb") as fzip:
+        st.download_button(
+            label=f"⬇️  Tải về {zip_name}",
+            data=fzip.read(),
+            file_name=zip_name,
+            mime="application/zip",
+            use_container_width=True,
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Page: Format & Label Data
+# ═══════════════════════════════════════════════════════════════════════════════
+def render_format_label_data():
+    # ── Upload section ────────────────────────────────────────────────────────
+    col_buzz, col_demo, col_action = st.columns([3, 3, 2], gap="medium")
+
+    with col_buzz:
+        st.markdown('<div class="k-section">📁 File Buzz Data <span style="color:#C83200">*</span></div>', unsafe_allow_html=True)
+        buzz_file = st.file_uploader(
+            label="buzz",
+            type=["xlsx"],
+            accept_multiple_files=False,
+            label_visibility="collapsed",
+            key="buzz_uploader",
+        )
+        if buzz_file:
+            st.markdown(
+                f'<div style="background:#FFF4F0;border:1px solid #FFCCB8;border-radius:8px;'
+                f'padding:8px 14px;font-size:13px;color:#C83200;font-weight:500;margin-top:6px;">'
+                f'✓ &nbsp;<b>{buzz_file.name}</b> &nbsp;·&nbsp; {buzz_file.size/1024:.1f} KB</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.caption("File raw buzz data (.xlsx) — bắt buộc")
+
+    with col_demo:
+        st.markdown('<div class="k-section">👥 File Demographic <span style="color:#94A3B8">(tùy chọn)</span></div>', unsafe_allow_html=True)
+        demo_file = st.file_uploader(
+            label="demo",
+            type=["xlsx"],
+            accept_multiple_files=False,
+            label_visibility="collapsed",
+            key="demo_uploader",
+        )
+        if demo_file:
+            st.markdown(
+                f'<div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:8px;'
+                f'padding:8px 14px;font-size:13px;color:#16A34A;font-weight:500;margin-top:6px;">'
+                f'✓ &nbsp;<b>{demo_file.name}</b> &nbsp;·&nbsp; {demo_file.size/1024:.1f} KB</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;'
+                'padding:8px 14px;font-size:13px;color:#92400E;margin-top:6px;">'
+                '⚠️ Không có demographic — vẫn xử lý, gán tag <b>No Demographic</b></div>',
+                unsafe_allow_html=True,
+            )
+
+    with col_action:
+        st.markdown('<div class="k-section">🚀 Thực thi</div>', unsafe_allow_html=True)
+        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+
+        if st.button(
+            "🚀  Bắt đầu xử lý",
+            disabled=(buzz_file is None),
+            use_container_width=True,
+            type="primary",
+        ):
+            if buzz_file is not None:
+                jid = submit_job(buzz_file, demo_file)
+                st.session_state["last_jid"] = jid
+                st.rerun()
+
+        if buzz_file is None:
+            st.caption("⬆️ Upload file buzz data trước")
+        else:
+            mode = "với Demographic" if demo_file else "không có Demographic"
+            st.caption(f"Sẵn sàng chạy {mode}")
+
+    # ── Job list ──────────────────────────────────────────────────────────────
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    st.markdown('<div class="k-section">📊 Danh sách tác vụ</div>', unsafe_allow_html=True)
+
+    STATUS_CFG = {
+        "running": ("⏳", "Đang chạy",  "#C83200", "k-job-running"),
+        "done":    ("✅", "Hoàn thành", "#16A34A", "k-job-done"),
+        "error":   ("❌", "Lỗi",        "#DC2626", "k-job-error"),
+        "stopped": ("⏹",  "Đã dừng",   "#F59E0B", "k-job-stopped"),
+        "queued":  ("🕐", "Chờ xử lý", "#94A3B8", "k-job-queued"),
+    }
+    PROG_COLOR = {
+        "running": "#C83200", "done": "#16A34A",
+        "error": "#DC2626", "stopped": "#F59E0B", "queued": "#CBD5E1",
+    }
+
+    if not JOBS:
+        st.markdown(
+            '<div class="k-empty">'
+            '<div class="k-empty-icon">📭</div>'
+            '<div class="k-empty-text">Chưa có tác vụ nào</div>'
+            '<div class="k-empty-hint">Upload file buzz và bấm <b>Bắt đầu xử lý</b></div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        has_running = False
+
+        for job_id, job in reversed(list(JOBS.items())):
+            status   = job["status"]
+            progress = job["progress"]
+            stage    = job["stage"]
+
+            s_icon, s_label, s_color, _ = STATUS_CFG.get(status, ("❓", status, "#94A3B8", ""))
+            prog_color = PROG_COLOR.get(status, "#CBD5E1")
+            fill_pct   = progress if status != "error" else 100
+
+            col_info, col_status, col_pct, col_action = st.columns([5, 1.5, 1, 1.8], gap="small")
+
+            with col_info:
+                demo_badge = (
+                    '<span class="demo-yes">👥 Có Demographic</span>'
+                    if job["has_demo"] else
+                    '<span class="demo-no">🚫 No Demographic</span>'
+                )
+                stats_html = ""
+                if status == "done" and job.get("stats"):
+                    s = job["stats"]
+                    stats_html = (
+                        f'<span style="font-size:11px;color:#94A3B8;margin-left:8px;">'
+                        f'{s["total_rows"]:,} rows &nbsp;·&nbsp; '
+                        f'Labels: {s["labels_filled"]:,}'
+                        + (f' &nbsp;·&nbsp; Demo matched: {s["demo_matched"]:,}' if s["has_demo"] else "")
+                        + '</span>'
+                    )
+                st.markdown(
+                    f'<div style="display:flex;align-items:center;gap:8px;padding-top:8px;flex-wrap:wrap;">'
+                    f'<span style="font-weight:600;font-size:14px;color:#1E293B;max-width:220px;'
+                    f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{job["filename"]}">'
+                    f'{job["filename"]}</span>'
+                    f'{demo_badge}'
+                    f'<span style="color:#CBD5E1;font-size:11px;">#{job_id}</span>'
+                    f'{stats_html}'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+
+            with col_status:
+                st.markdown(
+                    f'<div style="text-align:center;padding-top:8px;font-size:13px;'
+                    f'font-weight:700;color:{s_color};">{s_icon}&nbsp;{s_label}</div>',
+                    unsafe_allow_html=True,
+                )
+
+            with col_pct:
+                st.markdown(
+                    f'<div style="text-align:center;padding-top:4px;font-size:20px;'
+                    f'font-weight:800;color:{s_color};">{progress}%</div>',
+                    unsafe_allow_html=True,
+                )
+
+            with col_action:
+                if status == "done" and job.get("output_path") and os.path.exists(job["output_path"]):
+                    with open(job["output_path"], "rb") as fout:
+                        st.download_button(
+                            label="⬇️ Tải về",
+                            data=fout.read(),
+                            file_name=f"GGG_output_{job['filename']}",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            key=f"dl_{job_id}",
+                            use_container_width=True,
+                        )
+                elif status in ("running", "queued"):
+                    if st.button("⏹  Dừng", key=f"stop_{job_id}", use_container_width=True):
+                        JOBS[job_id]["stop_requested"] = True
+                        JOBS[job_id]["stage"] = "Đang dừng..."
+                        st.rerun()
+
+            # Progress bar
+            st.markdown(
+                f'<div class="k-prog-wrap">'
+                f'<div class="k-prog-bar" style="width:{fill_pct}%;background:{prog_color};"></div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+            # Stage + timestamp
+            t_info = f"Tạo lúc {job['created_at']}"
+            if job.get("finished_at"):
+                t_info += f"  ·  Xong lúc {job['finished_at']}"
+            st.markdown(
+                f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
+                f'<span style="font-size:12px;color:#64748B;">{stage}</span>'
+                f'<span style="font-size:11px;color:#CBD5E1;">{t_info}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+            if status == "error" and job.get("error"):
+                with st.expander("Xem chi tiết lỗi", expanded=False):
+                    st.code(job["error"], language=None)
+
+            st.markdown('<div style="height:1px;background:#F1F5F9;margin:6px 0 10px;"></div>', unsafe_allow_html=True)
+
+            if status == "running":
+                has_running = True
+
+        if has_running:
+            time.sleep(1)
             st.rerun()
+
+    # ── Stats + Clear ─────────────────────────────────────────────────────────
+    if JOBS:
+        total_n   = len(JOBS)
+        run_n     = sum(1 for j in JOBS.values() if j["status"] == "running")
+        done_n    = sum(1 for j in JOBS.values() if j["status"] == "done")
+        stopped_n = sum(1 for j in JOBS.values() if j["status"] == "stopped")
+        err_n     = sum(1 for j in JOBS.values() if j["status"] == "error")
+        demo_n    = sum(1 for j in JOBS.values() if j["has_demo"])
+
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        c1, c2, c3, c4, c5, c6 = st.columns(6)
+        for col, num, label, color in [
+            (c1, total_n,   "Tổng cộng",     "#C83200"),
+            (c2, run_n,     "Đang chạy",     "#C83200"),
+            (c3, done_n,    "Hoàn thành",    "#16A34A"),
+            (c4, stopped_n, "Đã dừng",       "#F59E0B"),
+            (c5, err_n,     "Lỗi",           "#DC2626"),
+            (c6, demo_n,    "Có Demographic","#0EA5E9"),
+        ]:
+            with col:
+                st.markdown(
+                    f'<div class="k-stat">'
+                    f'<div class="k-stat-num" style="color:{color}">{num}</div>'
+                    f'<div class="k-stat-lbl">{label}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+
+        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+        clearable = [jid for jid, j in JOBS.items() if j["status"] in ("done", "error", "stopped")]
+        if clearable:
+            if st.button(f"🗑️  Xoá {len(clearable)} tác vụ đã kết thúc", type="secondary"):
+                for jid in clearable:
+                    del JOBS[jid]
+                st.rerun()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Render selected page
+# ═══════════════════════════════════════════════════════════════════════════════
+if page == "Category Split":
+    render_category_split()
+else:
+    render_format_label_data()
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown(

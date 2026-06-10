@@ -27,6 +27,7 @@ RUN apt-get clean && \
 # Copy application files
 COPY app.py .
 COPY ggg_pipeline.py .
+COPY category_split_pipeline.py .
 COPY topic_brand_mapping.json .
 COPY .streamlit/ .streamlit/
 

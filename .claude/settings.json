@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -m py_compile app.py)",
+      "Bash(timeout 15 streamlit run app.py --server.headless true --server.port 8599)",
+      "Bash(python3 -m streamlit --version)",
+      "Bash(grep -vE \"^\\\\s*#|^\\\\s*$\")",
+      "Bash(docker --version)",
+      "Bash(docker info *)"
+    ]
+  }
+}
