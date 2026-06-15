@@ -79,6 +79,25 @@ def _safe_filename_part(name: str) -> str:
     return _INVALID_FS_CHARS.sub("-", name).strip()
 
 
+def _df_to_xlsx_bytes(df: pd.DataFrame, date_col: str = "Date", date_fmt: str = "MM/DD/YYYY") -> bytes:
+    import openpyxl
+    tmp = io.BytesIO()
+    df.to_excel(tmp, index=False)
+    tmp.seek(0)
+    wb = openpyxl.load_workbook(tmp)
+    ws = wb.active
+    headers = [c.value for c in ws[1]]
+    if date_col in headers:
+        cidx = headers.index(date_col) + 1
+        for row in ws.iter_rows(min_row=2, min_col=cidx, max_col=cidx):
+            for cell in row:
+                if cell.value is not None:
+                    cell.number_format = date_fmt
+    out = io.BytesIO()
+    wb.save(out)
+    return out.getvalue()
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN PIPELINE
 # ══════════════════════════════════════════════════════════════════════════════
@@ -140,10 +159,7 @@ def split_by_category(input_path: str, output_zip_path: str, progress_callback=N
             sub_df    = df[category_series == category]
             xlsx_name = f"{_safe_filename_part(category)}_Monthly data_{month_year_label} - Data.xlsx"
 
-            xlsx_buf = io.BytesIO()
-            with pd.ExcelWriter(xlsx_buf, engine="openpyxl", datetime_format="MM/DD/YYYY") as writer:
-                sub_df.to_excel(writer, index=False)
-            zf.writestr(xlsx_name, xlsx_buf.getvalue())
+            zf.writestr(xlsx_name, _df_to_xlsx_bytes(sub_df))
 
             files_generated.append({"name": xlsx_name, "rows": len(sub_df)})
             cb(40 + int(50 * (i + 1) / max(n, 1)), f"Đã tạo {xlsx_name}")

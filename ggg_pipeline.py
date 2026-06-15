@@ -240,8 +240,18 @@ def run_pipeline(
         if col not in df.columns:
             df[col] = ""
 
-    with pd.ExcelWriter(output_path, engine="openpyxl", datetime_format="MM/DD/YYYY") as writer:
-        df[OUTPUT_COLS].to_excel(writer, index=False, sheet_name="Data")
+    df[OUTPUT_COLS].to_excel(output_path, index=False, sheet_name="Data")
+    import openpyxl as _xl
+    _wb = _xl.load_workbook(output_path)
+    _ws = _wb["Data"]
+    _headers = [c.value for c in _ws[1]]
+    if "Date" in _headers:
+        _cidx = _headers.index("Date") + 1
+        for _row in _ws.iter_rows(min_row=2, min_col=_cidx, max_col=_cidx):
+            for _cell in _row:
+                if _cell.value is not None:
+                    _cell.number_format = "MM/DD/YYYY"
+    _wb.save(output_path)
     cb(100, "Hoàn thành!")
 
     return {
