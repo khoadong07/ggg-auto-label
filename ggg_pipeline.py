@@ -21,7 +21,7 @@ CURRENT_YEAR = datetime.now().year
 
 OUTPUT_COLS = [
     "Id", "TopicId", "Topic", "Brand Code", "Title", "Content", "Description",
-    "UrlComment", "PublishedDate", "Sentiment", "SiteName", "SiteId", "Channel",
+    "UrlComment", "Date", "Sentiment", "SiteName", "SiteId", "Channel",
     "POE", "Author", "AuthorId", "UrlTopic", "ParentId",
     "Labels1", "Labels2", "Labels3", "Labels4",
     "feed_back", "Type", "Gender", "Birthday", "năm sinh", "X", "TUỔI",
@@ -66,16 +66,6 @@ TOPIC_BRAND = {
 _ID_FB_PAT = re.compile(r'^(\d+)_')
 _YEAR_PAT  = re.compile(r'\b(19\d{2}|20\d{2})\b')
 
-
-def _format_date(val):
-    if not val or pd.isna(val): return val
-    s = str(val)
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
-        try:
-            return datetime.strptime(s[:19], fmt).strftime("%d/%m/%Y")
-        except ValueError:
-            continue
-    return val
 
 
 def _fix_channel(row):
@@ -125,8 +115,8 @@ def run_pipeline(
     total_rows = len(df)
 
     cb(10, f"Transform {total_rows:,} rows...")
-    df["Brand Code"]    = df["Topic"].map(TOPIC_BRAND).fillna("")
-    df["PublishedDate"] = df["PublishedDate"].apply(_format_date)
+    df["Brand Code"] = df["Topic"].map(TOPIC_BRAND).fillna("")
+    df["Date"]       = pd.to_datetime(df["PublishedDate"], format="mixed", dayfirst=True, errors="coerce")
     df["POE"]           = df["SharedMedia"].fillna("Earned") if "SharedMedia" in df.columns else "Earned"
     df["Channel"]       = df.apply(_fix_channel, axis=1)
     # Chỉ tạo AuthorId nếu raw file chưa có — tránh ghi đè User ID gốc
@@ -250,7 +240,8 @@ def run_pipeline(
         if col not in df.columns:
             df[col] = ""
 
-    df[OUTPUT_COLS].to_excel(output_path, index=False, sheet_name="Data")
+    with pd.ExcelWriter(output_path, engine="openpyxl", datetime_format="MM/DD/YYYY") as writer:
+        df[OUTPUT_COLS].to_excel(writer, index=False, sheet_name="Data")
     cb(100, "Hoàn thành!")
 
     return {

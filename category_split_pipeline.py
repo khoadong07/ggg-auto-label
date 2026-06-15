@@ -100,13 +100,17 @@ def split_by_category(input_path: str, output_zip_path: str, progress_callback=N
     if "Topic" not in df.columns:
         raise ValueError("File không có cột 'Topic'")
 
-    # ── Xác định kỳ báo cáo (Month.Year) từ PublishedDate ─────────────────────
+    # ── Rename + convert PublishedDate → Date (datetime) ─────────────────────
+    if "PublishedDate" in df.columns:
+        df = df.rename(columns={"PublishedDate": "Date"})
+        df["Date"] = pd.to_datetime(df["Date"], format="mixed", dayfirst=True, errors="coerce")
+
+    # ── Xác định kỳ báo cáo (Month.Year) từ cột Date ─────────────────────────
     cb(15, "Xác định kỳ báo cáo (Month.Year)...")
     periods = pd.Series([], dtype="period[M]")
     date_source = "current_date"
-    if "PublishedDate" in df.columns:
-        dates = pd.to_datetime(df["PublishedDate"], format="mixed", dayfirst=True, errors="coerce")
-        periods = dates.dt.to_period("M").dropna()
+    if "Date" in df.columns:
+        periods = df["Date"].dt.to_period("M").dropna()
 
     if len(periods) > 0:
         target_period = periods.mode().iloc[0]
@@ -137,7 +141,8 @@ def split_by_category(input_path: str, output_zip_path: str, progress_callback=N
             xlsx_name = f"{_safe_filename_part(category)}_Monthly data_{month_year_label} - Data.xlsx"
 
             xlsx_buf = io.BytesIO()
-            sub_df.to_excel(xlsx_buf, index=False)
+            with pd.ExcelWriter(xlsx_buf, engine="openpyxl", datetime_format="MM/DD/YYYY") as writer:
+                sub_df.to_excel(writer, index=False)
             zf.writestr(xlsx_name, xlsx_buf.getvalue())
 
             files_generated.append({"name": xlsx_name, "rows": len(sub_df)})
