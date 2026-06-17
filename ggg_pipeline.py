@@ -21,7 +21,7 @@ CURRENT_YEAR = datetime.now().year
 
 OUTPUT_COLS = [
     "Id", "TopicId", "Topic", "Brand Code", "Title", "Content", "Description",
-    "UrlComment", "Date", "Sentiment", "SiteName", "SiteId", "Channel",
+    "UrlComment", "PublishedDate", "Sentiment", "SiteName", "SiteId", "Channel",
     "POE", "Author", "AuthorId", "UrlTopic", "ParentId",
     "Labels1", "Labels2", "Labels3", "Labels4",
     "feed_back", "Type", "Gender", "Birthday", "năm sinh", "X", "TUỔI",
@@ -116,7 +116,7 @@ def run_pipeline(
 
     cb(10, f"Transform {total_rows:,} rows...")
     df["Brand Code"] = df["Topic"].map(TOPIC_BRAND).fillna("")
-    df["Date"]       = pd.to_datetime(df["PublishedDate"], format="mixed", dayfirst=True, errors="coerce")
+    df["PublishedDate"] = pd.to_datetime(df["PublishedDate"], format="mixed", dayfirst=True, errors="coerce")
     df["POE"]           = df["SharedMedia"].fillna("Earned") if "SharedMedia" in df.columns else "Earned"
     df["Channel"]       = df.apply(_fix_channel, axis=1)
     # Chỉ tạo AuthorId nếu raw file chưa có — tránh ghi đè User ID gốc
@@ -245,12 +245,12 @@ def run_pipeline(
     _wb = _xl.load_workbook(output_path)
     _ws = _wb["Data"]
     _headers = [c.value for c in _ws[1]]
-    if "Date" in _headers:
-        _cidx = _headers.index("Date") + 1
+    if "PublishedDate" in _headers:
+        _cidx = _headers.index("PublishedDate") + 1
         for _row in _ws.iter_rows(min_row=2, min_col=_cidx, max_col=_cidx):
             for _cell in _row:
                 if _cell.value is not None:
-                    _cell.number_format = "MM/DD/YYYY"
+                    _cell.number_format = "DD/MM/YYYY"
     _wb.save(output_path)
     cb(100, "Hoàn thành!")
 

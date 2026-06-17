@@ -79,7 +79,7 @@ def _safe_filename_part(name: str) -> str:
     return _INVALID_FS_CHARS.sub("-", name).strip()
 
 
-def _df_to_xlsx_bytes(df: pd.DataFrame, date_col: str = "Date", date_fmt: str = "MM/DD/YYYY") -> bytes:
+def _df_to_xlsx_bytes(df: pd.DataFrame, date_col: str = "PublishedDate", date_fmt: str = "DD/MM/YYYY") -> bytes:
     import openpyxl
     tmp = io.BytesIO()
     df.to_excel(tmp, index=False)
@@ -119,17 +119,16 @@ def split_by_category(input_path: str, output_zip_path: str, progress_callback=N
     if "Topic" not in df.columns:
         raise ValueError("File không có cột 'Topic'")
 
-    # ── Rename + convert PublishedDate → Date (datetime) ─────────────────────
+    # ── Convert PublishedDate → datetime ─────────────────────────────────────
     if "PublishedDate" in df.columns:
-        df = df.rename(columns={"PublishedDate": "Date"})
-        df["Date"] = pd.to_datetime(df["Date"], format="mixed", dayfirst=True, errors="coerce")
+        df["PublishedDate"] = pd.to_datetime(df["PublishedDate"], format="mixed", dayfirst=True, errors="coerce")
 
-    # ── Xác định kỳ báo cáo (Month.Year) từ cột Date ─────────────────────────
+    # ── Xác định kỳ báo cáo (Month.Year) từ PublishedDate ────────────────────
     cb(15, "Xác định kỳ báo cáo (Month.Year)...")
     periods = pd.Series([], dtype="period[M]")
     date_source = "current_date"
-    if "Date" in df.columns:
-        periods = df["Date"].dt.to_period("M").dropna()
+    if "PublishedDate" in df.columns:
+        periods = df["PublishedDate"].dt.to_period("M").dropna()
 
     if len(periods) > 0:
         target_period = periods.mode().iloc[0]
