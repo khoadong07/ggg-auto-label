@@ -65,12 +65,8 @@ CATEGORY_TOPICS = {
     "The Coffee House": ["The Coffee House"],
 }
 
-# Topic Name -> Category (Topic trùng ở nhiều Category sẽ lấy Category khai báo sau cùng)
-TOPIC_CATEGORY = {
-    topic: category
-    for category, topics in CATEGORY_TOPICS.items()
-    for topic in topics
-}
+# Tập hợp tất cả topic đã biết (dùng để phát hiện unmapped)
+ALL_TOPICS = {topic for topics in CATEGORY_TOPICS.values() for topic in topics}
 
 _INVALID_FS_CHARS = re.compile(r'[\\/:*?"<>|]')
 
@@ -140,26 +136,28 @@ def split_by_category(input_path: str, output_zip_path: str, progress_callback=N
     month_year_compact = f"{target_period.month:02d}{target_period.year}"
     month_year_label   = f"{calendar.month_abbr[target_period.month]}.{target_period.year}"
 
-    # ── Map Topic -> Category ─────────────────────────────────────────────────
+    # ── Phát hiện topic không có trong mapping ───────────────────────────────
     cb(25, "Map Topic -> Category...")
-    topic_clean      = df["Topic"].astype(str).str.strip()
-    category_series  = topic_clean.map(TOPIC_CATEGORY)
-    mapped_mask      = category_series.notna()
-    unmapped_topics  = sorted(topic_clean[~mapped_mask].unique().tolist())
+    topic_clean     = df["Topic"].astype(str).str.strip()
+    mapped_mask     = topic_clean.isin(ALL_TOPICS)
+    unmapped_topics = sorted(topic_clean[~mapped_mask].unique().tolist())
 
-    # ── Tách theo Category, xuất Excel vào zip ────────────────────────────────
+    # ── Tách theo Category (1 topic có thể vào nhiều category) ───────────────
     cb(40, "Tách dữ liệu theo Category...")
     files_generated = []
     buf = io.BytesIO()
+    categories = sorted(CATEGORY_TOPICS.keys())
+    n = len(categories)
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        categories = sorted(category_series[mapped_mask].unique())
-        n = len(categories)
         for i, category in enumerate(categories):
-            sub_df    = df[category_series == category]
+            topic_set = set(CATEGORY_TOPICS[category])
+            sub_df    = df[topic_clean.isin(topic_set)]
+            if sub_df.empty:
+                cb(40 + int(50 * (i + 1) / max(n, 1)), f"Bỏ qua {category} (không có dữ liệu)")
+                continue
+
             xlsx_name = f"{_safe_filename_part(category)}_Monthly data_{month_year_label} - Data.xlsx"
-
             zf.writestr(xlsx_name, _df_to_xlsx_bytes(sub_df))
-
             files_generated.append({"name": xlsx_name, "rows": len(sub_df)})
             cb(40 + int(50 * (i + 1) / max(n, 1)), f"Đã tạo {xlsx_name}")
 
