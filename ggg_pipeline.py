@@ -123,6 +123,49 @@ def run_pipeline(
     if "AuthorId" not in df.columns:
         df["AuthorId"] = df["Id"].apply(_extract_author_id)
 
+    # ── Pre-filter: Keyword-based labels (before AI model) ───────────────────
+    cb(14, "Pre-filter: kiểm tra từ khoá...")
+    _filter_cols = [c for c in ["Title", "Content", "Description"] if c in df.columns]
+    _text_lower = df[_filter_cols].fillna("").agg(" ".join, axis=1).str.lower()
+
+    _GIA_KEYWORDS = [
+        "tăng giá", "lên giá", "ngáo giá", "ảo giá", "bảng giá",
+        "giá buffet", "giá niêm yết", "giá cao", "giá đắt", "giá rẻ",
+        "giá vé", "giá tăng", "giá vậy", "giá này", "mức giá",
+        "phân khúc giá", "túi tiền", "chi phí", "niêm yết",
+        "vat", "đắt", "mắc",
+    ]
+    _gia_mask = _text_lower.str.contains("|".join(re.escape(k) for k in _GIA_KEYWORDS), regex=True)
+
+    _WIFI_KEYWORDS = [
+        "wifi", "wi-fi",
+        "mạng chậm", "mạng yếu", "mạng kém", "mạng tệ",
+        "không vào được mạng", "không vào nổi mạng",
+        "kết nối không ổn định", "kết nối wifi", "bắt wifi",
+        "chập chờn", "internet chậm", "internet yếu",
+    ]
+    _wifi_mask = _text_lower.str.contains("|".join(re.escape(k) for k in _WIFI_KEYWORDS), regex=True)
+    _wifi_mask = _wifi_mask & ~_gia_mask
+
+    _MAYLANH_KEYWORDS = [
+        "máy lạnh", "điều hòa", "điều hoà", "máy điều hòa", "máy điều hoà",
+    ]
+    _maylanh_mask = _text_lower.str.contains("|".join(re.escape(k) for k in _MAYLANH_KEYWORDS), regex=True)
+    _maylanh_mask = _maylanh_mask & ~_gia_mask & ~_wifi_mask
+
+    for i in range(1, 5):
+        df[f"Labels{i}"] = ""
+    df.loc[_gia_mask, "Labels1"] = "6. Giá & Chính sách"
+    df.loc[_gia_mask, "Labels2"] = "6.1 Giá"
+    df.loc[_wifi_mask, "Labels1"] = "4. Vận hành chung"
+    df.loc[_wifi_mask, "Labels2"] = "4.12 Wifi"
+    df.loc[_wifi_mask, "Labels3"] = "Khả năng truy cập"
+    df.loc[_maylanh_mask, "Labels1"] = "3. Cơ sở vật chất"
+    df.loc[_maylanh_mask, "Labels2"] = "3.2 Hình ảnh không gian (bài trí, trang trí, nhiệt độ, ánh sáng, nhà vệ sinh...)"
+    df.loc[_maylanh_mask, "Labels3"] = "Máy lạnh"
+
+    _prefilter_mask = _gia_mask | _wifi_mask | _maylanh_mask
+
     # ── Step 2: Predict labels ────────────────────────────────────────────────
     cb(15, "Tải model AI...")
     import torch
@@ -145,14 +188,17 @@ def run_pipeline(
                 seen.add(t); out.append(t)
         return " ".join(out)
 
-    cb(20, "Tiền xử lý văn bản...")
-    df["_text"] = df.apply(_merge, axis=1).apply(_preprocess_text)
+    ai_df = df[~_prefilter_mask].copy()
+    ai_count = len(ai_df)
 
-    texts     = df["_text"].tolist()
+    cb(20, f"Tiền xử lý văn bản ({ai_count:,} records cần AI)...")
+    ai_df["_text"] = ai_df.apply(_merge, axis=1).apply(_preprocess_text)
+
+    texts     = ai_df["_text"].tolist()
     all_preds = []
     n_batches = (len(texts) + BATCH_SIZE - 1) // BATCH_SIZE
 
-    cb(25, f"Dự đoán nhãn ({total_rows:,} records)...")
+    cb(25, f"Dự đoán nhãn ({ai_count:,} records)...")
     for i, start in enumerate(range(0, len(texts), BATCH_SIZE)):
         batch  = texts[start : start + BATCH_SIZE]
         inputs = tokenizer(batch, return_tensors="pt", truncation=True,
@@ -162,13 +208,16 @@ def run_pipeline(
         for pid in torch.argmax(probs, dim=-1):
             all_preds.append(model.config.id2label[int(pid)])
 
-        pct = 25 + int(60 * (i + 1) / n_batches)
+        pct = 25 + int(60 * (i + 1) / max(n_batches, 1))
         cb(pct, f"Dự đoán nhãn... ({min(start+BATCH_SIZE, len(texts)):,}/{len(texts):,})")
 
     hierarchies = [[l.strip() for l in p.split("->")] for p in all_preds]
     for i in range(4):
-        df[f"Labels{i+1}"] = [h[i] if i < len(h) else "" for h in hierarchies]
-    df.drop(columns=["_text"], inplace=True, errors="ignore")
+        ai_df[f"Labels{i+1}"] = [h[i] if i < len(h) else "" for h in hierarchies]
+    ai_df.drop(columns=["_text"], inplace=True, errors="ignore")
+
+    for col in [f"Labels{i+1}" for i in range(4)]:
+        df.loc[~_prefilter_mask, col] = ai_df[col].values
 
     # ── Step 3: Join demographic ──────────────────────────────────────────────
     has_demo = demo_path is not None and Path(demo_path).exists()
@@ -255,8 +304,11 @@ def run_pipeline(
     cb(100, "Hoàn thành!")
 
     return {
-        "total_rows":  total_rows,
-        "has_demo":    has_demo,
-        "demo_matched": int(df["Author"].ne("").sum()) if has_demo else 0,
-        "labels_filled": int(df["Labels1"].ne("").sum()),
+        "total_rows":     total_rows,
+        "has_demo":       has_demo,
+        "demo_matched":   int(df["Author"].ne("").sum()) if has_demo else 0,
+        "labels_filled":  int(df["Labels1"].ne("").sum()),
+        "gia_prefiltered":  int(_gia_mask.sum()),
+        "wifi_prefiltered":    int(_wifi_mask.sum()),
+        "maylanh_prefiltered": int(_maylanh_mask.sum()),
     }
