@@ -141,7 +141,9 @@ def split_by_category(input_path: str, output_zip_path: str, progress_callback=N
             csv_name = f"{_safe_filename_part(category)}_Monthly data_{month_year_label} - Data.csv"
             out_df = sub_df.copy()
             if "PublishedDate" in out_df.columns:
-                out_df["PublishedDate"] = out_df["PublishedDate"].dt.strftime("%d/%m/%Y")
+                out_df["PublishedDate"] = out_df["PublishedDate"].apply(
+                    lambda x: x.strftime("%d/%m/%Y") if pd.notna(x) else ""
+                )
             zf.writestr(csv_name, out_df.to_csv(index=False).encode("utf-8-sig"))
             files_generated.append({"name": csv_name, "rows": len(sub_df)})
             cb(40 + int(50 * (i + 1) / max(n, 1)), f"Đã tạo {csv_name}")
